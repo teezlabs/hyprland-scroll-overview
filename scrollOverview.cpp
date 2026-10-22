@@ -1224,6 +1224,11 @@ CScrollOverview::CScrollOverview(PHLWORKSPACE startedOn_, bool swipe_, PHLMONITO
         if (info.cancelled)
             return;
 
+        // Extra buttons have no built-in overview action. Let Hyprland handle
+        // their bindings, including press/release and other bind flags.
+        if (event.button != BTN_LEFT && event.button != BTN_RIGHT && event.button != BTN_MIDDLE)
+            return;
+
         // If a native drag was not adopted, Hyprland must receive its release.
         if (!g_pointerGrabOverview && g_layoutManager && g_layoutManager->dragController()->target())
             return;
@@ -5251,6 +5256,20 @@ void CScrollOverview::reopen() {
     closeApplied        = false;
     closeRemovalPending = false;
     setClosing(false);
+
+    // When all monitors were closing, the shared state may still belong to a
+    // closing instance. Let it hand ownership to an open overview again.
+    for (const auto& overview : scrollOverviews()) {
+        auto* owner = overview ? dynamic_cast<CScrollOverview*>(overview.get()) : nullptr;
+        if (owner && owner->sharedStateOwner && owner->closing) {
+            owner->transferSharedStateOwnership();
+            break;
+        }
+    }
+
+    usesSubmapKeybinds = hasOverviewSubmap();
+    if (usesSubmapKeybinds)
+        keyboardKeyHook.reset();
     activateSubmapIfConfigured();
     emitFullscreenVisibilityState(Desktop::focusState()->window(), true);
     *scale = ScrollOverview::Config::getScale(pMonitor.lock());
