@@ -5100,6 +5100,14 @@ void CScrollOverview::close(ECloseMode mode) {
     const bool PRESERVEMONITORSTATE = mode == ECloseMode::PRESERVE_MONITOR_STATE;
     const bool ACTIVATESELECTION    = !PRESERVEMONITORSTATE && activeScrollOverview().get() == this;
     const auto MONITOR              = pMonitor.lock();
+    // DPMS/output replacement may leave an overview referring to a monitor
+    // that no longer exists. Retire it without touching workspace state.
+    if (!MONITOR) {
+        closing = true;
+        closeRemovalPending = true;
+        scheduleCloseRemoval();
+        return;
+    }
     const auto SELECTEDWORKSPACE    = PRESERVEMONITORSTATE ?
         (MONITOR ? MONITOR->m_activeWorkspace : PHLWORKSPACE{}) :
         (viewportCurrentWorkspace < images.size() && images[viewportCurrentWorkspace] ? images[viewportCurrentWorkspace]->pWorkspace : PHLWORKSPACE{});
