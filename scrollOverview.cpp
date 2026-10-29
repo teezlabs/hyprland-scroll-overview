@@ -1650,7 +1650,8 @@ CScrollOverview::CScrollOverview(PHLWORKSPACE startedOn_, bool swipe_, PHLMONITO
                 moveSelection("down");
                 break;
             case XKB_KEY_Return:
-            case XKB_KEY_KP_Enter: closeAll(); break;
+            case XKB_KEY_KP_Enter:
+            case XKB_KEY_Escape: closeAll(); break;
             default: return;
         }
 
@@ -1669,7 +1670,7 @@ CScrollOverview::CScrollOverview(PHLWORKSPACE startedOn_, bool swipe_, PHLMONITO
     windowMoveHook      = Event::bus()->m_events.window.moveToWorkspace.listen(onWindowMove);
     windowActiveHook    = Event::bus()->m_events.window.active.listen(onWindowActive);
     windowFullscreenHook = Event::bus()->m_events.window.fullscreen.listen(onWindowFullscreen);
-    workspaceCreatedHook = Event::bus()->m_events.workspace.created.listen(onWorkspaceLifecycle);
+    workspaceCreatedHook = Event::bus()->m_events.workspace.createdLate.listen(onWorkspaceLifecycle);
     workspaceRemovedHook = Event::bus()->m_events.workspace.removed.listen(onWorkspaceLifecycle);
     activateSubmapIfConfigured();
     if (!usesSubmapKeybinds)
@@ -5545,11 +5546,6 @@ bool CScrollOverview::dispatchSubmapMouseClick(uint32_t button) {
     if (KEYBIND == BINDS.end())
         return false;
 
-    const auto INDEX = Hyprutils::String::strToNumber<int>((*KEYBIND)->metadata().argument);
-    const auto MGR   = Config::Lua::mgr();
-    if (!INDEX || !MGR)
-        return false;
-
     auto&      actionState          = *Config::Actions::state();
     const int PREVIOUSPASSPRESSED   = actionState.m_passPressed;
     const int PREVIOUSDEPTH         = actionState.m_bindInvocationDepth;
@@ -5566,7 +5562,7 @@ bool CScrollOverview::dispatchSubmapMouseClick(uint32_t button) {
         actionState.m_lastMouseCode       = PREVIOUSMOUSECODE;
     });
 
-    const auto RESULT = MGR->callLuaFnBind(*INDEX);
+    const auto RESULT = (*KEYBIND)->invoke();
     return RESULT.success;
 }
 
